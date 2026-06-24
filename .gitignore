@@ -1,0 +1,15 @@
+# dependencies
+node_modules/
+
+# secrets — កុំ commit ឡើយ!
+.env
+.env.local
+.env.*.local
+*.pem
+
+# vercel
+.vercel
+
+# os / editor
+.DS_Store
+*.log

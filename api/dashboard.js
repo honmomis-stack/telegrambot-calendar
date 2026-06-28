@@ -14,30 +14,51 @@ const HTML = `<!doctype html>
 <title>Admin Dashboard</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  :root{ --bg:var(--tg-theme-bg-color,#fff); --text:var(--tg-theme-text-color,#111);
-    --hint:var(--tg-theme-hint-color,#888); --card:var(--tg-theme-secondary-bg-color,#f4f4f5);
-    --btn:var(--tg-theme-button-color,#2ea6ff); --btnt:var(--tg-theme-button-text-color,#fff);
-    --link:var(--tg-theme-link-color,#2ea6ff); }
+
+  :root {
+    --bg-grad: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+    --card: rgba(255, 255, 255, 0.75);
+    --card-blur: blur(20px);
+    --text: #1d1d1f; 
+    --hint: #86868b;
+    --btn: #007AFF; --btnt: #fff;
+    --link: #007AFF;
+    --shadow: 0 10px 40px rgba(0,0,0,0.06);
+    --line: rgba(0,0,0,0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-grad: linear-gradient(135deg, #1c1c1e 0%, #000000 100%);
+      --card: rgba(44, 44, 46, 0.65);
+      --text: #f5f5f7;
+      --hint: #98989d;
+      --line: rgba(255,255,255,0.1); --shadow: 0 10px 40px rgba(0,0,0,0.3);
+      --btn: #0A84FF; --link: #0A84FF;
+    }
+  }
   *{box-sizing:border-box}
-  body{font-family:'Noto Sans Khmer',system-ui,sans-serif;margin:0;background:var(--bg);color:var(--text);
-    padding:16px;line-height:1.6;font-size:15px}
-  h1{font-size:19px;margin:0 0 4px} h2{font-size:15px;margin:0 0 10px}
-  .hint{color:var(--hint);font-size:13px}
-  .card{background:var(--card);border-radius:14px;padding:14px;margin:12px 0}
-  .stats{display:flex;gap:12px}
-  .stat{flex:1;text-align:center} .stat .n{font-size:26px;font-weight:600} .stat .l{color:var(--hint);font-size:13px}
-  textarea,input{width:100%;border:none;border-radius:10px;padding:10px;font:inherit;background:var(--bg);
-    color:var(--text);outline:none;border:1px solid var(--hint)}
-  textarea{min-height:80px;resize:vertical}
-  button{background:var(--btn);color:var(--btnt);border:none;border-radius:10px;padding:11px 14px;
-    font:inherit;font-weight:500;cursor:pointer;width:100%;margin-top:8px}
-  button.sec{background:transparent;color:var(--link);border:1px solid var(--hint);width:auto;padding:6px 12px;margin:0}
-  .row{display:flex;gap:8px;align-items:center}
-  .hol{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--card)}
-  .hol .d{color:var(--hint);font-size:13px}
-  .msg{font-size:13px;margin-top:6px;min-height:18px}
-  .err{color:#e24b4a}
-  #gate{text-align:center;padding:40px 0}
+  body{font-family:'Outfit','Noto Sans Khmer',system-ui,sans-serif;margin:0;background:var(--bg-grad);color:var(--text);padding:20px;line-height:1.6;font-size:15px;min-height:100vh;background-attachment:fixed;}
+  h1{font-size:24px;margin:0 0 6px;letter-spacing:-0.5px;font-weight:700} 
+  h2{font-size:17px;margin:0 0 12px;font-weight:600}
+  .hint{color:var(--hint);font-size:14px;font-weight:500}
+  .card{background:var(--card);backdrop-filter:var(--card-blur);-webkit-backdrop-filter:var(--card-blur);border-radius:24px;padding:20px;margin:16px 0;box-shadow:var(--shadow);border:1px solid rgba(255,255,255,0.15)}
+  .stats{display:flex;gap:16px}
+  .stat{flex:1;text-align:center;background:rgba(120,120,128,0.05);padding:16px 10px;border-radius:18px} 
+  .stat .n{font-size:32px;font-weight:700;letter-spacing:-1px} .stat .l{color:var(--hint);font-size:14px;margin-top:4px;font-weight:500}
+  textarea,input{width:100%;border:none;border-radius:14px;padding:14px;font:inherit;background:rgba(120,120,128,0.06);color:var(--text);outline:none;border:1px solid transparent;transition:border-color 0.2s, background 0.2s}
+  textarea:focus,input:focus{border-color:var(--btn);background:transparent}
+  textarea{min-height:100px;resize:vertical}
+  button{background:var(--btn);color:var(--btnt);border:none;border-radius:14px;padding:14px 16px;font:inherit;font-weight:600;font-size:15px;cursor:pointer;width:100%;margin-top:12px;transition:transform 0.15s, opacity 0.2s;box-shadow:0 4px 12px rgba(0,122,255,0.25)}
+  button:active{transform:scale(0.97);opacity:0.9}
+  button.sec{background:transparent;color:var(--link);border:1px solid rgba(0,122,255,0.3);width:auto;padding:8px 16px;margin:0;box-shadow:none}
+  button.sec:active{background:rgba(0,122,255,0.1)}
+  .row{display:flex;gap:12px;align-items:center}
+  .hol{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+  .hol:last-child{border:none}
+  .hol .d{color:var(--hint);font-size:14px}
+  .msg{font-size:14px;margin-top:8px;min-height:20px;font-weight:500}
+  .err{color:#FF3B30}
+  #gate{text-align:center;padding:60px 0;font-size:16px}
   .hidden{display:none}
 </style></head>
 <body>

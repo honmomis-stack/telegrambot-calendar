@@ -197,5 +197,48 @@ export default async function handler(req, res) {
   }
 
 
+  
+  // ---- Group Auto Report (6 PM) ----
+  let dailyGroupReportSent = 0;
+  try {
+    const tz = config.defaultTimezone;
+    const nowD = new Date();
+    const hour = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', hour12: false }).format(nowD), 10);
+    // Send around 6 PM (18:00)
+    if (hour >= 18) {
+      const todayYmd = ymdInTz(tz, nowD);
+      let allGroups = [];
+      try { if (typeof listAllGroups === 'function') allGroups = await listAllGroups(); } catch(e) {}
+      
+      for (const grp of allGroups) {
+        try {
+          if (await wasDailySent(grp.chat_id, todayYmd)) continue;
+
+          const startOfMonth = todayYmd.slice(0, 8) + '01';
+          let trxs = [];
+          try { if (typeof getTransactions === 'function') trxs = await getTransactions(grp.chat_id, startOfMonth, todayYmd); } catch(e){}
+          
+          if (trxs && trxs.length > 0) {
+            let totalInc = 0; let totalExp = 0;
+            trxs.forEach(t => { if (t.trx_type === 'income') totalInc += parseFloat(t.amount); else totalExp += parseFloat(t.amount); });
+            
+            let repMsg = `🌆 <b>របាយការណ៍ហិរញ្ញវត្ថុប្រចាំថ្ងៃ</b>\n\n`;
+            repMsg += `💵 <b>ចំណូលសរុបប្រចាំខែ៖</b> ${totalInc.toFixed(2)}$\n`;
+            repMsg += `💸 <b>ចំណាយសរុបប្រចាំខែ៖</b> ${totalExp.toFixed(2)}$\n`;
+            repMsg += `⚖️ <b>នៅសល់៖</b> ${(totalInc - totalExp).toFixed(2)}$\n`;
+            
+            await sendMessage(grp.chat_id, repMsg);
+            await markDailySent(grp.chat_id, todayYmd);
+            dailyGroupReportSent++;
+          }
+        } catch (e) {
+          console.error('[cron] group report error:', e.message);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[cron] group report block:', e.message);
+  }
+
   return res.status(200).json({ ok: true, users: users.length, checked, sent, scheduledSent, dailySent });
 }

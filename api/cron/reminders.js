@@ -9,7 +9,7 @@
 //        បើ event ចូល window ហើយមិនទាន់ផ្ញើ → ផ្ញើ reminder ម្ដង (idempotent)។
 
 import { config } from '../../lib/config.js';
-import { listConnectedUsers, getRefreshToken, disconnectUser, wasReminderSent, markReminderSent, getDueReminders, markScheduledSent, getHolidaysInRange, wasDailySent, markDailySent } from '../../lib/db.js';
+import { listConnectedUsers, getRefreshToken, disconnectUser, wasReminderSent, markReminderSent, getDueReminders, markScheduledSent, getHolidaysInRange, wasDailySent, markDailySent , listLocalEvents, listAllUsers} from '../../lib/db.js';
 import { refreshAccessToken, listEvents } from '../../lib/google.js';
 import { eventStartDate, formatEventTime, ymdInTz } from '../../lib/datetime.js';
 import { sendMessage, esc } from '../../lib/telegram.js';
@@ -108,8 +108,8 @@ export default async function handler(req, res) {
     console.error('[cron] getDueReminders failed:', e.message);
   }
 
-  // ---- daily digest ពេលព្រឹក (ថ្ងៃសីល + ថ្ងៃឈប់សម្រាក) ----
-  // ផ្ញើម្ដង/ថ្ងៃ នៅពេលម៉ោងក្នុងតំបន់ >= 7:00 ព្រឹក; តែនៅថ្ងៃដែលមានសីល ឬ ឈប់សម្រាក។
+  
+  // ---- daily digest ពេលព្រឹក (ថ្ងៃសីល + ថ្ងៃឈប់សម្រាក + ព្រឹត្តិការណ៍) ----
   let dailySent = 0;
   try {
     const nowD = new Date();
@@ -119,7 +119,25 @@ export default async function handler(req, res) {
     const holMap = {};
     for (const h of holidays) holMap[h.holiday_date] = h.name;
 
-    for (const user of users) {
+    // Get ALL users for daily digest (not just connected ones)
+    let allUsers = users;
+    try {
+      if (typeof listAllUsers === 'function') {
+        allUsers = await listAllUsers();
+      }
+    } catch (e) {}
+
+    const quotes = [
+      'ពេលវេលាជាមាសប្រាក់ ប្រើវាឲ្យមានន័យ! 🌟',
+      'ជោគជ័យកើតចេញពីការខិតខំប្រឹងប្រែងជារៀងរាល់ថ្ងៃ! 💪',
+      'ស្នាមញញឹមនៅពេលព្រឹក គឺជាថាមពលសម្រាប់ពេញមួយថ្ងៃ! 😊',
+      'កុំខ្លាចនឹងបរាជ័យ ព្រោះវាជាមេរៀនឆ្ពោះទៅរកភាពជោគជ័យ! 🚀',
+      'ការគិតល្អ នាំទៅរកលទ្ធផលល្អ! ✨',
+      'សេចក្តីព្យាយាមគង់បានសម្រេច! 🎯',
+      'អរុណសួស្ដី! ថ្ងៃនេះគឺជាឱកាសថ្មីសម្រាប់អ្នក! 🌅'
+    ];
+
+    for (const user of allUsers) {
       try {
         if (user.notify_daily === false) continue;
         const tz = user.timezone || config.defaultTimezone;
@@ -127,18 +145,45 @@ export default async function handler(req, res) {
           new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', hour12: false }).format(nowD),
           10
         );
-        if (hour < 7) continue; // រង់ចាំដល់ ៧ ព្រឹក​ម៉ោងក្នុងតំបន់
+        if (hour < 7) continue; 
 
         const todayYmd = ymdInTz(tz, nowD);
         const sila = silaLabel(todayYmd);
         const holToday = holMap[todayYmd];
-        if (!sila && !holToday) continue; // គ្មានអ្វីត្រូវជូនដំណឹង
+        
         if (await wasDailySent(user.telegram_id, todayYmd)) continue;
 
+        let localEvents = [];
+        try {
+          if (typeof listLocalEvents === 'function') {
+            localEvents = await listLocalEvents(user.telegram_id, todayYmd, todayYmd);
+          }
+        } catch (e) {}
+
+        // Send digest to everyone
         const kh = khmerLunar(todayYmd);
-        let msg = `🌅 <b>អរុណសួស្ដី!</b>\n🌙 ${kh.lunar}\n☀️ ${kh.solar}`;
-        if (sila) msg += `\n\n🛕 ថ្ងៃនេះជា <b>ថ្ងៃសីល ${sila}</b> — សូមរក្សាសីល 🙏`;
-        if (holToday) msg += `\n\n🎉 ថ្ងៃនេះ <b>ឈប់សម្រាក</b>៖ ${esc(holToday)}`;
+        let msg = `🌅 <b>អរុណសួស្ដី!</b>
+
+📅 ${kh.lunar} (${kh.solar})`;
+        if (sila) msg += `
+🛕 <b>ថ្ងៃសីល៖</b> ${sila} — សូមរក្សាសីល 🙏`;
+        if (holToday) msg += `
+🎉 <b>ថ្ងៃឈប់សម្រាក៖</b> ${esc(holToday)}`;
+        
+        if (localEvents && localEvents.length > 0) {
+          msg += `
+
+📌 <b>ព្រឹត្តិការណ៍ថ្ងៃនេះ៖</b>`;
+          for (const ev of localEvents) {
+            msg += `
+▫️ ${esc(ev.summary)} (${ev.event_time === '00:00' ? 'ពេញមួយថ្ងៃ' : ev.event_time})`;
+          }
+        }
+
+        const quote = quotes[Math.floor(Math.random() * quotes.length)];
+        msg += `
+
+💬 <i>${quote}</i>`;
 
         await sendMessage(user.telegram_id, msg);
         await markDailySent(user.telegram_id, todayYmd);
@@ -150,6 +195,7 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('[cron] daily digest block:', e.message);
   }
+
 
   return res.status(200).json({ ok: true, users: users.length, checked, sent, scheduledSent, dailySent });
 }

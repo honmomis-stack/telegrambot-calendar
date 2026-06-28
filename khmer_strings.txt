@@ -1,0 +1,518 @@
+.env.example:2: # ចម្លងទៅ .env សម្រាប់ test នៅ local (កុំ commit .env ឡើយ)។
+.env.example:3: # នៅ production៖ ដាក់តម្លៃទាំងនេះក្នុង Vercel → Project → Settings → Environment Variables។
+.env.example:5: # ---- Telegram (ពី @BotFather) ----
+.env.example:7: # secret header (បង្កើតដោយ: node scripts/gen-secrets.js)
+.env.example:13: # ត្រូវត្រូវគ្នាបេះបិទនឹង "Authorized redirect URI" ក្នុង Google Console
+.env.example:21: # service_role key — SERVER ONLY! កុំ expose ទៅ client ឡើយ
+.env.example:24: # ---- Secrets (បង្កើតដោយ: node scripts/gen-secrets.js) ----
+.env.example:25: ENCRYPTION_KEY=     # 32 bytes base64 ឬ hex (សម្រាប់ encrypt refresh token)
+.env.example:26: STATE_SECRET=       # HMAC សម្រាប់ OAuth state
+.env.example:27: CRON_SECRET=        # ការពារ /api/cron/reminders
+.env.example:29: # ---- ការកំណត់ default (ស្រេចចិត្ត) ----
+.env.example:32: # កែតម្រូវលេខថ្ងៃច្រិតគតិ (0 = momentkh ដើម/ផ្លូវការ; 1 = ត្រូវនឹង App ខ្លះ)
+.env.example:36: # Telegram user id របស់ admin (យកដោយវាយ /whoami ក្នុង bot)
+.env.example:38: # (ស្រេចចិត្ត) base URL បើ domain ខុសពី redirect uri
+README.md:3: Telegram bot ដែលភ្ជាប់ជាមួយ **Google Calendar** របស់ User ម្នាក់ៗ ដើម្បីបង្ហាញ និងរំលឹក
+README.md:4: កិច្ចការ/ព្រឹត្តិការណ៍ដោយស្វ័យប្រវត្តិ។ Deploy លើ **Vercel**, ទិន្នន័យលើ **Supabase**។
+README.md:5: រចនាដោយ **គិតពីសុវត្ថិភាពជាចម្បង** និងអាច **ចែករំលែកឲ្យគ្រប់គ្នាប្រើ** (multi-user)។
+README.md:9: ## ✨ មុខងារ
+README.md:11: - 🔗 `/connect` — User ម្នាក់ៗភ្ជាប់ Google Calendar ផ្ទាល់ខ្លួន (OAuth, **read-only**)
+README.md:12: - 📅 `/today` `/week` `/next` — មើលកិច្ចការ on-demand
+README.md:13: - 🔔 រំលឹកស្វ័យប្រវត្តិមុនព្រឹត្តិការណ៍ (តាម Vercel Cron)
+README.md:14: - ⚙️ `/remind <នាទី>` និង `/timezone <Zone>` — កំណត់តាមចិត្ត User ម្នាក់ៗ
+README.md:15: - 🔌 `/disconnect` — ផ្ដាច់ និងលុប token
+README.md:19: ## 🔒 ការរចនាសុវត្ថិភាព
+README.md:21: | ហានិភ័យ | ការការពារ |
+README.md:23: | គេក្លែង request មក webhook | ផ្ទៀងផ្ទាត់ header `X-Telegram-Bot-Api-Secret-Token` |
+README.md:24: | CSRF លើ OAuth flow | `state` ចុះ HMAC-SHA256 + expiry ១០ នាទី (ចង flow ទៅ Telegram user) |
+README.md:25: | Token លេចធ្លាយពី DB | refresh token **encrypt AES-256-GCM** មុនរក្សាទុក |
+README.md:26: | សិទ្ធិលើស | Google scope = `calendar.events.readonly` (អានតែប៉ុណ្ណោះ) |
+README.md:27: | គេ trigger cron | header `Authorization: Bearer <CRON_SECRET>` |
+README.md:28: | Supabase leak | RLS បើក + គ្មាន public policy; ប្រើ `service_role` server-side ប៉ុណ្ណោះ |
+README.md:29: | Supply-chain | ហៅ Telegram/Google API ដោយ `fetch` ផ្ទាល់ — dependency តែ ១ (`@supabase/supabase-js`) |
+README.md:30: | Secrets leak | គ្មាន secret ក្នុង code; `.env` នៅក្នុង `.gitignore` |
+README.md:34: ## 🚀 ការ Setup (ជំហានម្ដងមួយ)
+README.md:36: ### 1) បង្កើត Bot
+README.md:37: 1. បើក [@BotFather](https://t.me/BotFather) → `/newbot` → យក **BOT TOKEN**។
+README.md:40: 1. បង្កើត project នៅ [supabase.com](https://supabase.com)។
+README.md:41: 2. SQL Editor → paste មាតិកា [`supabase/schema.sql`](supabase/schema.sql) → Run។
+README.md:42: 3. Settings → API → ចម្លង **Project URL** និង **service_role key**។
+README.md:45: 1. [Google Cloud Console](https://console.cloud.google.com/) → បង្កើត project។
+README.md:46: 2. **APIs & Services → Library** → បើក **Google Calendar API**។
+README.md:47: 3. **OAuth consent screen** → External → បំពេញ App name, support email; បន្ថែម scope
+README.md:48: `.../auth/calendar.events.readonly`; ដាក់ខ្លួនអ្នកជា **Test user**។
+README.md:51: - យក **Client ID** និង **Client secret**។
+README.md:53: ### 4) បង្កើត Secrets
+README.md:56: node scripts/gen-secrets.js   # copy តម្លៃ ENCRYPTION_KEY / STATE_SECRET / CRON_SECRET / TELEGRAM_WEBHOOK_SECRET
+README.md:59: ### 5) Deploy លើ Vercel
+README.md:60: 1. Push code នេះឡើង GitHub។
+README.md:61: 2. Vercel → New Project → import repo។
+README.md:62: 3. **Settings → Environment Variables** → បំពេញគ្រប់ key តាម [`.env.example`](.env.example)
+README.md:63: (រួមទាំង `GOOGLE_REDIRECT_URI` = domain ពិតរបស់អ្នក)។
+README.md:64: 4. Deploy។
+README.md:66: ### 6) ចុះឈ្មោះ Webhook
+README.md:68: # បង្កើត .env ក្នុង local (ចម្លងពី .env.example) រួច៖
+README.md:72: ### 7) សាកល្បង
+README.md:73: បើក bot នៅ Telegram → `/start` → `/connect` → authorize → `/today` 🎉
+README.md:77: ## ⏰ អំពី Reminder (Cron) — សំខាន់
+README.md:79: - `vercel.json` កំណត់ cron **១ ដង/ថ្ងៃ** (`0 1 * * *`) ព្រោះ **Vercel Hobby (free)
+README.md:80: អនុញ្ញាត cron តែ ១ ដង/ថ្ងៃ** ប៉ុណ្ណោះ (schedule ញឹកជាងនេះ → deploy បរាជ័យ)។
+README.md:81: - ដើម្បីឲ្យ reminder ដំណើរការ **ម៉ោងពិត** សូមជ្រើស **មួយ** ក្នុងចំណោម៖
+README.md:82: 1. **Vercel Pro** → ប្ដូរ schedule ត្រឡប់ទៅ `*/15 * * * *`, ឬ
+README.md:83: 2. **External cron ឥតគិតថ្លៃ** (ឧ. [cron-job.org](https://cron-job.org), GitHub Actions, UptimeRobot)
+README.md:84: រៀងរាល់ ៥–១៥ នាទី ដែលហៅ៖
+README.md:89: - Logic គឺ idempotent — រត់ញឹកញាប់ក៏មិនផ្ញើ reminder ស្ទួនទេ។
+README.md:93: ## 🌐 ការចែករំលែកឲ្យគ្រប់គ្នា (Google Verification)
+README.md:95: scope `calendar.events.readonly` ជា **sensitive scope**៖
+README.md:96: - ពេល app នៅ **Testing** → refresh token ផុតក្នុង ៧ ថ្ងៃ និងកំណត់ ១០០ test users។
+README.md:97: - ដើម្បីបើកឲ្យ **គ្រប់គ្នា** ប្រើបានយូរ → ត្រូវ **Publish** app និងឆ្លងកាត់
+README.md:98: **Google verification** (សម្រាប់ sensitive scope ជាទូទៅមិនទាមទារ security assessment ធ្ងន់ៗទេ)។
+README.md:102: ## 📁 រចនាសម្ព័ន្ធ
+README.md:122: ## 🛣 បន្ថែមនាពេលក្រោយ (ideas)
+README.md:123: - Daily morning digest (សង្ខេបកិច្ចការពេលព្រឹក)
+README.md:124: - Reminder ច្រើនកម្រិត (ឧ. ១ ថ្ងៃ + ៣០ នាទីមុន)
+README.md:125: - ជ្រើស calendar ច្រើន (មិនត្រឹម `primary`)
+README.md:126: - ប៊ូតុង inline ប្ដូរ timezone / reminder ដោយមិនវាយ command
+README.md:127: - Rate-limit per-user (ការពារ abuse ពេលបើកសាធារណៈ)
+login.js:2: // ចាប់ផ្ដើមការភ្ជាប់ Google OAuth សម្រាប់ Admin Web Login
+login.js:8: // បង្កើត state ពិសេសដោយមាន { admin: true } ដើម្បីប្រាប់កន្លែងទទួល (callback) ថាវាជាការ Login របស់ Admin
+admin.js:2: // Backend សម្រាប់ Admin Mini App។ រាល់ action ត្រូវផ្ទៀង initData (HMAC) + admin id។
+admin.js:3: // គ្មាន initData valid ឬ​មិនមែន admin → បដិសេធ (401/403)។
+admin.js:31: // ១. ផ្ទៀងផ្ទាត់តាមរយៈ Telegram initData
+admin.js:38: // ២. ផ្ទៀងផ្ទាត់តាមរយៈ Web Cookie (Google Admin Login)
+admin.js:40: // ប្រើ regex — split('=') កាត់ token ដែលមាន '=' (base64 padding) ខ្នាតខ្លី
+admin.js:48: // Cookie មិនត្រឹមត្រូវ
+admin.js:115: // throttle ~25/វិនាទី (ដែនកំណត់ Telegram)
+admin.js:129: // កែ About ខ្លី៖ "👥 N នាក់ • <sponsor>"
+admin.js:134: const text = sponsor ? `👥 ${count} នាក់ • ${sponsor}` : `👥 ${count} នាក់ប្រើប្រាស់`;
+app.js:2: // Mini App / Website សាធារណៈ៖ ប្រតិទិនចន្ទគតិខ្មែរ + ថ្ងៃសីល + ថ្ងៃឈប់សម្រាក។
+app.js:3: // រចនាដើម (theme ពុទ្ធសាសនា) — ពេញអេក្រង់ គ្មានក្បាលទំព័រ + ប៊ូតុង Copy។
+app.js:4: // ទិន្នន័យសាធារណៈពី /api/calendar។ banner ភ្ជាប់ Reankh.org។
+app.js:19: <title>Telegram Calendar - ប្រតិទិនចន្ទគតិខ្មែរ</title>
+app.js:101: <div class="grid" id="grid"><div class="skel">កំពុងផ្ទុក…</div></div>
+app.js:103: <span><i style="background:var(--saf)"></i>ថ្ងៃនេះ</span>
+app.js:104: <span><i style="background:var(--sila)"></i>ថ្ងៃសីល</span>
+app.js:105: <span><i style="background:var(--maroon)"></i>ឈប់សម្រាក</span>
+app.js:110: <div class="sec">🛕 ថ្ងៃសីល & ឈប់សម្រាក ខែនេះ</div>
+app.js:115: <div class="sec">📝 បន្ថែម Note ផ្ទាល់ខ្លួន</div>
+app.js:117: <input id="n-text" class="note-in" maxlength="200" placeholder="ឈ្មោះព្រឹត្តិការណ៍ (មិនអនុញ្ញាត link)" style="margin-top:8px">
+app.js:118: <button class="nav" id="n-save" style="width:100%;margin-top:8px;height:auto;padding:11px;font-size:14px">រក្សាទុក</button>
+app.js:123: <span class="sponsor-tag">អ្នកឧបត្ថម្ភ</span>
+app.js:125: <div class="s">សិក្សា · សៀវភៅ · ផលិតផលអប់រំខ្មែរ</div>
+app.js:126: <span class="cta">ចូលទស្សនា →</span>
+app.js:134: <div class="toast" id="toast">បានចម្លង ✓</div>
+app.js:139: var WD = ['អា','ច','អ','ពុ','ព្រ','សុ','ស'];
+app.js:140: var SM = ['មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា','កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'];
+app.js:144: function khn(n){return String(n).replace(/[0-9]/g,function(d){return '០១២៣៤៥៦៧៨៩'[+d];});}
+app.js:145: function solarOf(g){return 'ថ្ងៃទី'+khn(g)+' ខែ'+SM[cur.m-1]+' ឆ្នាំ'+khn(cur.y);}
+app.js:161: var c=x.holiday?'h':'s'; var nm=x.holiday||('ថ្ងៃសីល '+x.sila);
+app.js:162: var sub=x.holiday&&x.sila?('<small> · សីល '+x.sila+'</small>'):'';
+app.js:171: h+='<button class="nav" style="width:100%;margin-top:8px;height:auto;padding:9px;font-size:13px" onclick="showAllList()">មើលទាំងអស់ ('+items.length+') ▾</button>';
+app.js:193: $('cal-lm').textContent = 'ខែ'+lm.join(' – ');
+app.js:212: var copyTxt = day.full+' ត្រូវនឹង '+solarOf(day.g);
+app.js:214: h+='<div class="full">'+esc(day.full)+'<br>ត្រូវនឹង '+esc(solarOf(day.g))+'</div>';
+app.js:215: if(day.sila) h+='<div style="text-align:center"><span class="tag s">🛕 ថ្ងៃសីល '+esc(day.sila)+'</span></div>';
+app.js:217: h+='<div class="acts"><button class="pri" id="sc">⧉ ចម្លង</button><button class="sec2" onclick="closeSheet()">បិទ</button></div>';
+app.js:218: if(cur.sponsor) h+='<div style="text-align:center;margin-top:16px;border-top:1px solid var(--line);padding-top:12px;font-size:12.5px;color:var(--muted)"><div style="font-size:10px;letter-spacing:.4px;margin-bottom:3px">🙏 អ្នកឧបត្ថម្ភ</div>'+esc(cur.sponsor)+'</div>';
+app.js:228: .catch(function(){$('grid').innerHTML='<div class="skel">⚠️ ផ្ទុកមិនបាន</div>';});
+app.js:230: // Note form — Telegram only (initData); link បដិសេធខាង server
+app.js:236: if(!d||!t||!x){ m.textContent='សូមបំពេញគ្រប់'; return; }
+app.js:237: var btn=this; btn.disabled=true; m.textContent='កំពុងរក្សាទុក...';
+app.js:240: m.textContent=j.ok?'✅ បានរក្សាទុក':('⚠️ '+(j.error||'error'));
+app.js:242: }).catch(function(){m.textContent='⚠️ បរាជ័យ';})['finally'](function(){btn.disabled=false;});
+calendar.js:2: // ទិន្នន័យប្រតិទិនចន្ទគតិ​សាធារណៈ (read-only, គ្មាន​សិទ្ធិ​ត្រូវការ)។
+calendar.js:3: // ?month=YYYY-MM → ថ្ងៃនីមួយៗ + ចន្ទគតិ + ថ្ងៃសីល + ថ្ងៃឈប់សម្រាក។
+calendar.js:4: // បង្ហាញ​តែ​ទិន្នន័យ​សាធារណៈ (គ្មាន​អ្វី​សម្ងាត់)។
+calendar.js:28: /* holidays table អាចមិនទាន់មាន */
+calendar.js:38: lunar: kh.dayLabel, // ខ្លី "៨កើត" សម្រាប់ cell
+calendar.js:39: full: kh.lunar, // ពេញ "ថ្ងៃច័ន្ទ ៨កើត ខែ..." សម្រាប់ detail + copy
+reminders.js:2: // រត់ដោយ Vercel Cron (ឬ external cron) → ផ្ញើ reminder មុនព្រឹត្តិការណ៍។
+reminders.js:4: // សុវត្ថិភាព៖ ផ្ទៀងផ្ទាត់ header Authorization: Bearer <CRON_SECRET>។
+reminders.js:5: // Vercel បញ្ជូន header នេះដោយស្វ័យប្រវត្តិពេលមាន env CRON_SECRET។
+reminders.js:6: // External cron (cron-job.org / GitHub Actions) ត្រូវផ្ញើ header ដូចគ្នា។
+reminders.js:8: // Logic៖ សម្រាប់ user ម្នាក់ៗ → list events ក្នុង window [now, now+reminder_minutes]
+reminders.js:9: //        បើ event ចូល window ហើយមិនទាន់ផ្ញើ → ផ្ញើ reminder ម្ដង (idempotent)។
+reminders.js:19: // ផ្ទៀងផ្ទាត់ secret
+reminders.js:49: // token revoked → ផ្ដាច់ស្ងាត់ៗ (cron មិនផ្ញើសារ spam)
+reminders.js:66: // រំលងព្រឹត្តិការណ៍ដែលចាប់ផ្ដើមរួច
+reminders.js:68: // bot-created events → handled by scheduled_reminders (កុំ remind ស្ទួន)
+reminders.js:79: `🔔 <b>រំលឹក</b> (ក្នុង ~${minsLeft} នាទី)\n\n` +
+reminders.js:80: `<b>${esc(ev.summary || '(គ្មានចំណងជើង)')}</b>\n🕒 ${esc(when)}${loc}`
+reminders.js:87: // បន្តទៅ user បន្ទាប់ — កុំឲ្យ user ម្នាក់ធ្វើឲ្យ cron ទាំងមូលដួល
+reminders.js:91: // ---- ដំណើរការ scheduled reminders (events បង្កើតតាម bot) ----
+reminders.js:99: `🔔 <b>រំលឹក</b>\n\n<b>${esc(r.summary)}</b>\n🕒 ${esc(r.when_text || '')}`
+reminders.js:111: // ---- daily digest ពេលព្រឹក (ថ្ងៃសីល + ថ្ងៃឈប់សម្រាក) ----
+reminders.js:112: // ផ្ញើម្ដង/ថ្ងៃ នៅពេលម៉ោងក្នុងតំបន់ >= 7:00 ព្រឹក; តែនៅថ្ងៃដែលមានសីល ឬ ឈប់សម្រាក។
+reminders.js:130: if (hour < 7) continue; // រង់ចាំដល់ ៧ ព្រឹក​ម៉ោងក្នុងតំបន់
+reminders.js:135: if (!sila && !holToday) continue; // គ្មានអ្វីត្រូវជូនដំណឹង
+reminders.js:139: let msg = `🌅 <b>អរុណសួស្តី!</b>\n🌙 ${kh.lunar}\n☀️ ${kh.solar}`;
+reminders.js:140: if (sila) msg += `\n\n🛕 ថ្ងៃនេះជា <b>ថ្ងៃសីល ${sila}</b> — សូមរក្សាសីល 🙏`;
+reminders.js:141: if (holToday) msg += `\n\n🎉 ថ្ងៃនេះ <b>ឈប់សម្រាក</b>៖ ${esc(holToday)}`;
+dashboard.js:2: // បម្រើ Admin Mini App (Telegram Web App) ជា HTML។
+dashboard.js:3: // សុវត្ថិភាព៖ UI នេះ​ជា​សាធារណៈ ប៉ុន្តែ​រាល់ action ហៅ /api/admin ដែល​ផ្ទៀង initData + admin id។
+dashboard.js:44: <div id="gate" class="hint">កំពុងផ្ទៀងផ្ទាត់...</div>
+dashboard.js:47: <h1>🛠 ផ្ទាំងគ្រប់គ្រង</h1>
+dashboard.js:48: <p class="hint">ផ្សាយដំណឹង · ថ្ងៃឈប់សម្រាក · ស្ថិតិ</p>
+dashboard.js:52: <div class="stat"><div class="n" id="s-users">–</div><div class="l">👥 អ្នកប្រើ</div></div>
+dashboard.js:53: <div class="stat"><div class="n" id="s-hol">–</div><div class="l">🎉 ថ្ងៃឈប់</div></div>
+dashboard.js:58: <h2>📢 ផ្សាយដំណឹង</h2>
+dashboard.js:59: <textarea id="bc" placeholder="សារផ្ញើទៅអ្នកប្រើទាំងអស់..."></textarea>
+dashboard.js:60: <button id="bc-btn">ផ្ញើទៅអ្នកប្រើទាំងអស់</button>
+dashboard.js:65: <h2>💎 Sponsor / អ្នកឧបត្ថម្ភ</h2>
+dashboard.js:66: <textarea id="sp" placeholder="សារ (ឧ. ដើម្បីឲ្យ App ដំណើរការរលូន សូមអរគុណដល់ ...)"></textarea>
+dashboard.js:67: <input id="sp-img" placeholder="URL រូបភាព (ស្រេចចិត្ត)" style="margin-top:8px">
+dashboard.js:68: <label class="row" style="margin-top:8px;font-size:14px;color:var(--hint)">ចេញ ដង/សប្ដាហ៍៖
+dashboard.js:69: <input type="number" id="sp-pw" min="0" max="14" value="2" style="width:64px;margin-left:8px"> <span class="hint">(0=បិទ)</span>
+dashboard.js:71: <button id="sp-btn">រក្សាទុក</button>
+dashboard.js:76: <h2>🖼 ផ្ទាំងពាណិជ្ជកម្ម (App Banner)</h2>
+dashboard.js:77: <input id="ab-name" placeholder="ចំណងជើង (ឧ. Reankh.org)" style="margin-bottom:8px">
+dashboard.js:78: <input id="ab-desc" placeholder="ការពិពណ៌នា (ឧ. សិក្សា · សៀវភៅ...)" style="margin-bottom:8px">
+dashboard.js:79: <input id="ab-btn" placeholder="អក្សរលើប៊ូតុង (ឧ. ចូលទស្សនា →)" style="margin-bottom:8px">
+dashboard.js:80: <input id="ab-url" placeholder="តំណភ្ជាប់ (URL)" style="margin-bottom:8px">
+dashboard.js:82: <input type="checkbox" id="ab-hide" style="width:auto"> លាក់ផ្ទាំងនេះ
+dashboard.js:84: <button id="ab-save">រក្សាទុក</button>
+dashboard.js:89: <h2>🎉 ថ្ងៃឈប់សម្រាក</h2>
+dashboard.js:90: <div class="row"><input type="date" id="h-date"><input id="h-name" placeholder="ឈ្មោះ"></div>
+dashboard.js:91: <button id="h-add">បន្ថែម</button>
+dashboard.js:128: '<button class="sec" data-del="'+h.holiday_date+'">លុប</button></div>').join('') || '<div class="hint">គ្មាន</div>';
+dashboard.js:135: if(!confirm('ផ្ញើទៅអ្នកប្រើទាំងអស់?')) return;
+dashboard.js:136: $('bc-btn').disabled=true; $('bc-msg').textContent='កំពុងផ្ញើ...';
+dashboard.js:137: try{ const d = await api('broadcast',{text}); $('bc-msg').textContent='✅ ផ្ញើ '+d.sent+'/'+d.total; $('bc').value=''; }
+dashboard.js:143: try{ await api('setSponsorConfig',{sponsor:$('sp').value,image:$('sp-img').value.trim(),perWeek:parseInt($('sp-pw').value,10)||0}); $('sp-msg').textContent='✅ រក្សាទុករួច'; }
+dashboard.js:156: try{ await api('setAppBanner',{banner}); $('ab-msg').textContent='✅ រក្សាទុករួច'; }
+dashboard.js:162: if(!date||!name){ $('h-msg').innerHTML='<span class="err">បំពេញ​ថ្ងៃ​និង​ឈ្មោះ</span>'; return; }
+dashboard.js:164: try{ await api('addHoliday',{date,name}); $('h-name').value=''; $('h-msg').textContent='✅ បន្ថែមរួច'; await loadHolidays(); await loadStats(); }
+dashboard.js:176: ? '🔒 មិនមានសិទ្ធិ។ <br><br><a href="/api/admin/login" style="display:inline-block;background:var(--btn);color:var(--btnt);text-decoration:none;padding:10px 16px;border-radius:10px;font-weight:600">Login ជាមួយ Google Admin</a>' : '⚠️ ' + esc(e.message);
+note.js:2: // Website (Mini App) → បន្ថែម Note/ព្រឹត្តិការណ៍ផ្ទាល់ខ្លួន។
+note.js:3: // សុវត្ថិភាព (អាទិភាព)៖
+note.js:4: //  - ត្រូវ Telegram initData valid (HMAC) → identify user; web អនាមិកធ្វើមិនបាន (401)
+note.js:5: //  - បដិសេធ link/URL ក្នុង note (ការពារ spam/phishing/មេរោគ)
+note.js:6: //  - កំណត់ប្រវែង + validate ថ្ងៃ/ម៉ោង
+note.js:7: //  - រក្សាក្នុង local_events (ដូច /new); បង្ហាញវិញ esc() ការពារ XSS
+note.js:25: // ១. ផ្ទៀង Telegram initData (មិនអនុញ្ញាត web អនាមិក)
+note.js:32: // ២. validate + បដិសេធ link
+callback.js:2: // Google redirect ត្រឡប់មកទីនេះក្រោយ user authorize។
+callback.js:4: // សុវត្ថិភាព៖
+callback.js:5: //  - ផ្ទៀងផ្ទាត់ `state` (HMAC signed + expiry) → ការពារ CSRF និងចង flow ទៅ user ត្រឹមត្រូវ។
+callback.js:6: //  - refresh_token ត្រូវ encrypt មុនរក្សាទុក (ក្នុង saveConnection)។
+callback.js:7: //  - មិន leak error detail ទៅ browser ឡើយ។
+callback.js:19: // user បដិសេធ consent
+callback.js:21: return html(res, 400, 'បានបោះបង់', 'អ្នកបានបដិសេធការអនុញ្ញាត។ អាចត្រឡប់ទៅ Telegram ហើយ /connect ម្ដងទៀត។');
+callback.js:24: return html(res, 400, 'សំណើមិនត្រឹមត្រូវ', 'ខ្វះ parameter។');
+callback.js:27: // ផ្ទៀងផ្ទាត់ state
+callback.js:30: return html(res, 400, 'Link ផុតសុពលភាព', 'Link ភ្ជាប់ផុតសុពលភាព ឬមិនត្រឹមត្រូវ។ សូមសាកល្បងម្ដងទៀត។');
+callback.js:36: return html(res, 403, 'មិនមានសិទ្ធិ', 'ប្រព័ន្ធមិនទាន់បានកំណត់ ADMIN_EMAIL នៅឡើយទេ។');
+callback.js:44: return html(res, 403, 'មិនមានសិទ្ធិ', 'គណនីរបស់អ្នកគ្មានសិទ្ធិចូលជា Admin ទេ។');
+callback.js:53: return html(res, 500, 'មានបញ្ហា', 'មិនអាចភ្ជាប់បានទេ។ សូមព្យាយាមម្ដងទៀតពេលក្រោយ។');
+callback.js:63: // ករណីកម្រ — Google មិនបញ្ជូន refresh_token
+callback.js:64: return html(res, 400, 'ភ្ជាប់មិនបានសម្រេច', 'សូមព្យាយាម /connect ម្ដងទៀត។');
+callback.js:67: // យក email ដើម្បីបង្ហាញគណនីណាដែលភ្ជាប់
+callback.js:73: /* email ជា optional */
+callback.js:81: // ជូនដំណឹងក្នុង Telegram
+callback.js:84: `✅ បានភ្ជាប់ Google Calendar ជោគជ័យ${email ? ` (${email})` : ''}!\n\n` +
+callback.js:85: 'សាកល្បង /today ឬ /week មើល។ ខ្ញុំនឹងរំលឹកអ្នកមុនព្រឹត្តិការណ៍ដោយស្វ័យប្រវត្តិ។'
+callback.js:88: return html(res, 200, 'ភ្ជាប់ជោគជ័យ ✅', 'អ្នកអាចបិទផ្ទាំងនេះ ហើយត្រឡប់ទៅ Telegram។');
+callback.js:91: return html(res, 500, 'មានបញ្ហា', 'មិនអាចភ្ជាប់បានទេ។ សូមព្យាយាមម្ដងទៀតពេលក្រោយ។');
+callback.js:95: // ផ្ទាំង HTML សាមញ្ញ (គ្មាន secret)
+privacy.js:2: // Privacy Policy (តម្រូវ​សម្រាប់ Google OAuth verification)។
+privacy.js:3: // រួមមាន Limited Use disclosure តាម Google API Services User Data Policy។
+privacy.js:31: <p><b>សេចក្ដីសង្ខេប (ខ្មែរ)៖</b> កម្មវិធីនេះភ្ជាប់ Google Calendar របស់អ្នកដើម្បីបង្ហាញ និងរំលឹកព្រឹត្តិការណ៍
+privacy.js:32: តាម Telegram។ យើងស្នើសុំសិទ្ធិតិចតួចបំផុត រក្សា token ដោយ <b>encrypt</b> ហើយ <b>មិនលក់ ឬចែករំលែក</b>
+privacy.js:33: ទិន្នន័យអ្នកទៅភាគីទីបីឡើយ។ អ្នកអាចលុបការភ្ជាប់គ្រប់ពេលដោយ <code>/disconnect</code>។</p>
+telegram.js:2: // Webhook ដែល Telegram ហៅមកនៅពេលមាន update (Vercel serverless function)។
+telegram.js:4: // សុវត្ថិភាព៖ ផ្ទៀងផ្ទាត់ header X-Telegram-Bot-Api-Secret-Token មុនដំណើរការ។
+telegram.js:5: // បើ secret មិនត្រូវ → 401 (មានន័យថា request មិនមែនមកពី Telegram)។
+telegram.js:15: // ផ្ទៀងផ្ទាត់ secret token (constant-time-ish ការប្រៀបធៀប string ខ្លី)
+telegram.js:28: // ដំណើរការ update; តែងតែ ack 200 ឲ្យ Telegram (កុំឲ្យ retry storm)
+telegram.js:29: // បើ handler បរាជ័យ → log តែឆ្លើយ 200
+telegram.js:41: return req.body; // Vercel parse JSON ស្រាប់
+terms.js:1: // api/terms.js — Terms of Service (តម្រូវ​សម្រាប់ OAuth consent screen)។
+ai.js:7: អ្នកគឺជាជំនួយការផ្នែកប្រតិទិនខ្មែរ (Khmer Calendar Assistant) ដែលមានតួនាទីឆ្លើយតបសំណួរទូទៅ និងពន្យល់ពីរបៀបប្រើប្រាស់ប្រព័ន្ធប្រតិទិននេះ។
+ai.js:8: ច្បាប់ដែលអ្នកត្រូវអនុវត្តតាមយ៉ាងតឹងរ៉ឹង៖
+ai.js:9: ១. ត្រូវឆ្លើយតបដោយភាពទន់ភ្លន់ រួសរាយរាក់ទាក់ និងសមរម្យជានិច្ច។
+ai.js:10: ២. ហាមដាច់ខាតមិនឲ្យប្រើពាក្យបញ្ចុះបញ្ចូល ឬទាក់ទាញអតិថិជនឲ្យទិញសេវាកម្ម ឬផលិតផលអ្វីទាំងអស់។
+ai.js:11: ៣. បើសិនជាសំណួរមិនពាក់ព័ន្ធនឹងប្រតិទិន ការណាត់ជួប ឬកិច្ចការទូទៅទេ សូមឆ្លើយតបយ៉ាងទន់ភ្លន់ថាអ្នកគឺជាជំនួយការផ្នែកប្រតិទិនប៉ុណ្ណោះ។
+ai.js:12: ៤. ប្រសិនបើអ្នកប្រើប្រាស់សួរពីរបៀបមើល ឬបន្ថែមព្រឹត្តិការណ៍ សូមប្រាប់ពួកគេឲ្យប្រើប្រាស់ប៊ូតុង Menu ខាងក្រោម ឬវាយបញ្ជា /help ។
+ai.js:13: ៥. ឆ្លើយតបជាភាសាខ្មែរឲ្យបានច្បាស់លាស់ល្អ។
+ai.js:18: return "🙏 សូមអភ័យទោស ប្រព័ន្ធ AI មិនទាន់ត្រូវបានរៀបចំរួចរាល់ទេ (បាត់ GEMINI_API_KEY)។ សូមវាយ /help ដើម្បីមើលបញ្ជាធម្មតា។";
+ai.js:32: return "🙏 សុំទោសផង ខ្ញុំមានបញ្ហាបច្ចេកទេសបន្តិចបន្តួច មិនអាចឆ្លើយតបបានពេលនេះទេ។ សូមព្យាយាមម្តងទៀតនៅពេលក្រោយ។";
+config.js:2: // ផ្ទុក និងផ្ទៀងផ្ទាត់ environment variables ទាំងអស់នៅកន្លែងតែមួយ។
+config.js:3: // មិនមាន secret ណាមួយ hardcode ក្នុង code ឡើយ — ទាំងអស់មកពី Vercel env vars។
+config.js:8: // បោះ error ច្បាស់លាស់ ដើម្បីងាយស្រួល debug នៅពេល deploy ខ្វះ env
+config.js:19: // secret token ដែលយើងផ្តល់ឲ្យ Telegram ពេល setWebhook;
+config.js:20: // Telegram បញ្ជូនមកវិញក្នុង header X-Telegram-Bot-Api-Secret-Token
+config.js:32: // ឧ. https://<your-app>.vercel.app/api/oauth/callback
+config.js:45: // --- Secrets សម្រាប់ encryption / signing ---
+config.js:47: return required('ENCRYPTION_KEY'); // 32 bytes (base64 ឬ hex)
+config.js:50: return required('STATE_SECRET'); // HMAC សម្រាប់ OAuth state
+config.js:53: return required('CRON_SECRET'); // ការពារ endpoint cron
+config.js:72: // --- ការកំណត់ default ---
+config.js:76: // Google Calendar scope — អាន + សរសេរ events (ត្រូវការ ដើម្បីបង្កើតព្រឹត្តិការណ៍)
+config.js:77: // calendar.events = read/write events; នៅតែជា scope កម្រិត "sensitive" ដដែល
+crypto.js:2: // Encrypt / Decrypt សម្រាប់ Google refresh token មុនរក្សាទុកក្នុង database។
+crypto.js:3: // ប្រើ AES-256-GCM (authenticated encryption) — ការពារទាំង confidentiality និង integrity។
+crypto.js:4: // បើ database លេចធ្លាយ token នៅតែ encrypted (defense in depth លើ RLS)។
+crypto.js:27: // ផ្ដល់ string ការពារ៖ "v1:<iv>:<authTag>:<ciphertext>" (ទាំងអស់ base64)
+crypto.js:30: const iv = crypto.randomBytes(12); // 96-bit IV សម្រាប់ GCM
+crypto.js:48: decipher.setAuthTag(tag); // បើ token ត្រូវបានកែ → final() បោះ error
+datetime.js:2: // Helper សម្រាប់ timezone — គណនាព្រំដែនថ្ងៃ និង format ពេលវេលា។
+datetime.js:3: // កម្ពុជា (Asia/Phnom_Penh) គ្មាន DST ដូច្នេះ offset ថេរ (+07:00)។
+datetime.js:5: // យក offset បែប "+07:00" សម្រាប់ timezone មួយ
+datetime.js:20: // ថ្ងៃបច្ចុប្បន្នក្នុង tz ជា "YYYY-MM-DD"
+datetime.js:30: // ព្រំដែនថ្ងៃនេះ (ISO ជាមួយ offset) → { start, end }
+datetime.js:40: // format ពេលវេលានៃ event មួយ (timed ឬ all-day)
+datetime.js:62: return `${s} (ពេញថ្ងៃ)`;
+datetime.js:67: // ម៉ោងចាប់ផ្ដើមជា Date (timed → dateTime, all-day → date)
+db.js:2: // Supabase client ដោយប្រើ service_role key (server-side តែប៉ុណ្ណោះ)។
+db.js:3: // service_role bypass RLS — ដូច្នេះ key នេះមិនត្រូវ expose ទៅ client/browser ឡើយ។
+db.js:4: // គ្រប់ table មាន RLS បើក + គ្មាន public policy → គ្មាននរណាចូលដោយ anon key បានទេ។
+db.js:32: // រក្សាទុកការភ្ជាប់ Google (refresh token ត្រូវ encrypt មុនរក្សាទុក)
+db.js:47: // ត្រឡប់ refresh token ដែល decrypt រួច (ឬ null បើមិនបានភ្ជាប់)
+db.js:54: // លុប token ចេញ ប៉ុន្តែរក្សា row ទុក preferences (timezone/reminder)
+db.js:67: // upsert ដើម្បីបង្កើត row បើ user មិនទាន់មាន (កំណត់ pref មុនពេលភ្ជាប់)
+db.js:74: // user ទាំងអស់ដែលបានភ្ជាប់ Google (សម្រាប់ cron)
+db.js:85: // កត់ត្រាថា reminder សម្រាប់ event នេះត្រូវផ្ញើរួចហើយ ដើម្បីកុំផ្ញើស្ទួន។
+db.js:100: // unique constraint លើ (telegram_id, event_id, event_start) ការពារ duplicate
+db.js:110: // --- Event drafts (conversation state សម្រាប់ guided flow បង្កើត event) ---
+db.js:135: // --- Scheduled reminders (precomputed remind_at rows; cron ផ្ញើនៅពេលដល់) ---
+db.js:160: // --- Holidays (ថ្ងៃឈប់សម្រាក) ---
+db.js:217: // ចំនួន user សរុប (សម្រាប់ stats / sponsor display)
+db.js:226: // telegram_id ទាំងអស់ (សម្រាប់ broadcast)
+db.js:233: // --- Settings (key/value; ឧ. sponsor message) ---
+db.js:252: // --- Local events (ព្រឹត្តិការណ៍ក្នុង Bot — មិនពឹង Google) ---
+db.js:254: // ធានាមាន users row (សម្រាប់ FK) ដោយមិនកែ data ដែលមានស្រាប់
+db.js:287: // --- Sponsor auto-show (ប្រេកង់កំណត់ពី Admin) ---
+db.js:289: // timestamps នៃ sponsor ដែលបានបង្ហាញដល់ user នេះ ក្នុង ៧ ថ្ងៃចុងក្រោយ (ថ្មីៗមុន)
+eventflow.js:2: // Guided flow សម្រាប់បង្កើតព្រឹត្តិការណ៍ចូល Google Calendar តាមប៊ូតុង។
+eventflow.js:3: // លំដាប់៖ ឈ្មោះ (text) → ថ្ងៃ (inline calendar) → ម៉ោង → របៀបរំលឹក → preview → confirm។
+eventflow.js:4: // State រក្សាក្នុង event_drafts (serverless stateless)។
+eventflow.js:24: before30: 'មុន ៣០ នាទី',
+eventflow.js:25: before60: 'មុន ១ ម៉ោង',
+eventflow.js:26: before1440: 'មុន ១ ថ្ងៃ',
+eventflow.js:27: hourly: 'រាល់ម៉ោង (ថ្ងៃនោះ)',
+eventflow.js:28: daily: 'រាល់ថ្ងៃ ដល់ថ្ងៃនោះ',
+eventflow.js:29: none: 'គ្មានរំលឹក',
+eventflow.js:34: // steps ដែលរង់ចាំ text input ពី user
+eventflow.js:39: // ---- ចាប់ផ្ដើម flow ----
+eventflow.js:42: return sendMessage(chatId, '🔒 សូមបង្កើតព្រឹត្តិការណ៍ក្នុង chat ឯកជន (DM) ជាមួយ bot។');
+eventflow.js:44: await ensureUser(userId); // ធានាមាន users row (FK សម្រាប់ draft/local event) — មិនបាច់ភ្ជាប់ Google
+eventflow.js:54: '📝 <b>បង្កើតព្រឹត្តិការណ៍ថ្មី</b>\n\nវាយ <b>ឈ្មោះ</b> ព្រឹត្តិការណ៍ (ឧ. ប្រជុំក្រុម)៖\n\n<i>បោះបង់៖ /cancel</i>'
+eventflow.js:58: // ---- text input (ឈ្មោះ ឬ ម៉ោងផ្ទាល់ខ្លួន) ----
+eventflow.js:65: const err = validateUserText(text, { max: 200 }); // 🔒 បដិសេធ link/URL
+eventflow.js:67: return sendMessage(chatId, `${err}។ វាយឈ្មោះព្រឹត្តិការណ៍ម្ដងទៀត៖`);
+eventflow.js:73: `✅ ឈ្មោះ៖ <b>${esc(text)}</b>\n\n📅 ឥឡូវជ្រើស <b>ថ្ងៃ</b>៖`,
+eventflow.js:81: return sendMessage(chatId, 'ទម្រង់ម៉ោងមិនត្រឹមត្រូវ។ វាយបែប <code>HH:MM</code> (ឧ. 14:30)៖');
+eventflow.js:85: return sendMessage(chatId, `✅ ម៉ោង៖ <b>${time}</b>\n\n🔔 ជ្រើស <b>របៀបរំលឹក</b>៖`, reminderKeyboard());
+eventflow.js:95: // ប្ដូរខែ​ក្នុង​ប្រតិទិន (មិនត្រូវការ draft)
+eventflow.js:106: await answerCallbackQuery(cq.id, 'បានបោះបង់');
+eventflow.js:107: return sendMessage(chatId, '❌ បានបោះបង់ការបង្កើតព្រឹត្តិការណ៍។');
+eventflow.js:112: return answerCallbackQuery(cq.id, 'សម័យផុតកំណត់ — ចាប់ផ្ដើមឡើងវិញ /new');
+eventflow.js:119: return sendMessage(chatId, `✅ ថ្ងៃ៖ <b>${esc(date)}</b>\n\n🕒 ជ្រើស <b>ម៉ោង</b>៖`, timeKeyboard());
+eventflow.js:127: return sendMessage(chatId, '🕒 វាយម៉ោងបែប <code>HH:MM</code> (ឧ. 09:30)៖');
+eventflow.js:131: return sendMessage(chatId, `✅ ម៉ោង៖ <b>${esc(val)}</b>\n\n🔔 ជ្រើស <b>របៀបរំលឹក</b>៖`, reminderKeyboard());
+eventflow.js:142: await answerCallbackQuery(cq.id, 'កំពុងបង្កើត...');
+eventflow.js:149: // ---- បង្កើតព្រឹត្តិការណ៍ពិត + កំណត់រំលឹក ----
+eventflow.js:152: return sendMessage(chatId, '⚠️ ព័ត៌មានមិនគ្រប់។ ចាប់ផ្ដើមឡើងវិញ /new');
+eventflow.js:159: return sendMessage(chatId, '⚠️ ថ្ងៃ/ម៉ោងមិនត្រឹមត្រូវ។ /new ម្ដងទៀត។');
+eventflow.js:163: // បើភ្ជាប់ Google → សរសេរចូល Google; បើមិន (ឬ Google បរាជ័យ) → រក្សាក្នុង Bot
+eventflow.js:181: if (created.htmlLink) googleLink = `\n\n🔗 <a href="${created.htmlLink}">មើលក្នុង Google Calendar</a>`;
+eventflow.js:184: // Google បរាជ័យ (token ផុត ឬខ្វះសិទ្ធិ) → fall back ទៅ Bot (កុំឲ្យបាត់ព្រឹត្តិការណ៍)
+eventflow.js:189: // អ្នកប្រើមិនបានភ្ជាប់ Google (ឬ Google បរាជ័យ) → រក្សាក្នុង Bot
+eventflow.js:207: const where = savedGoogle ? '📅 Google Calendar' : '🤖 ក្នុង Bot';
+eventflow.js:210: `✅ <b>បានបង្កើតព្រឹត្តិការណ៍!</b>\n\n` +
+eventflow.js:212: `💾 រក្សាទុក៖ ${where}\n📨 រំលឹក ${rows.length} ដង${googleLink}`
+eventflow.js:221: // precompute remind_at timestamps (cron ផ្ញើទៅ Telegram)
+eventflow.js:236: // 'none' → គ្មាន
+eventflow.js:285: rows.push([{ text: '❌ បោះបង់', callback_data: 'ev:cancel' }]);
+eventflow.js:297: { text: '🕒 ម៉ោងផ្សេង (វាយ)', callback_data: 'ev:time:other' },
+eventflow.js:298: { text: '❌ បោះបង់', callback_data: 'ev:cancel' },
+eventflow.js:307: [{ text: '🔔 មុន ៣០ នាទី', callback_data: 'ev:rem:before30' }],
+eventflow.js:308: [{ text: '🔔 មុន ១ ម៉ោង', callback_data: 'ev:rem:before60' }],
+eventflow.js:309: [{ text: '🔔 មុន ១ ថ្ងៃ', callback_data: 'ev:rem:before1440' }],
+eventflow.js:310: [{ text: '🔁 រាល់ម៉ោង (ថ្ងៃនោះ)', callback_data: 'ev:rem:hourly' }],
+eventflow.js:311: [{ text: '🔁 រាល់ថ្ងៃ (ដល់ថ្ងៃនោះ)', callback_data: 'ev:rem:daily' }],
+eventflow.js:312: [{ text: '🔕 គ្មានរំលឹក', callback_data: 'ev:rem:none' }],
+eventflow.js:313: [{ text: '❌ បោះបង់', callback_data: 'ev:cancel' }],
+eventflow.js:324: { text: '✅ បញ្ជាក់ បង្កើត', callback_data: 'ev:confirm' },
+eventflow.js:325: { text: '❌ បោះបង់', callback_data: 'ev:cancel' },
+eventflow.js:334: '🧾 <b>ពិនិត្យមុនបង្កើត</b>\n\n' +
+eventflow.js:335: `📌 ឈ្មោះ៖ <b>${esc(d.summary)}</b>\n` +
+eventflow.js:336: `📅 ថ្ងៃ៖ <b>${esc(d.event_date)}</b>\n` +
+eventflow.js:337: `🕒 ម៉ោង៖ <b>${esc(d.event_time)}</b>\n` +
+eventflow.js:338: `🔔 រំលឹក៖ <b>${REMINDER_LABELS[d.reminder_kind] || d.reminder_kind}</b>\n\n` +
+eventflow.js:339: 'ចុច ✅ ដើម្បីបង្កើតចូល Google Calendar។'
+google.js:2: // Google OAuth 2.0 + Calendar API ដោយប្រើ fetch ផ្ទាល់ (គ្មាន SDK ធ្ងន់)។
+google.js:3: // Scope = read-only (calendar.events.readonly) → least privilege។
+google.js:12: // បង្កើត URL ឲ្យ user ចុច authorize
+google.js:19: access_type: 'offline', // ដើម្បីទទួល refresh_token
+google.js:20: prompt: 'consent', // បង្ខំឲ្យផ្តល់ refresh_token គ្រប់ពេល
+google.js:27: // ប្តូរ authorization code → tokens (access + refresh)
+google.js:46: // ប្រើ refresh_token → យក access_token ថ្មី
+google.js:59: // 400 invalid_grant ជាទូទៅ = user ដក access ឬ token ផុតសុពលភាព
+google.js:77: // បង្កើតព្រឹត្តិការណ៍ថ្មី; event = Google Calendar event resource
+google.js:78: // ត្រឡប់ event ដែលបង្កើត (មាន id, htmlLink)។ បោះ error ជាមួយ .status បើបរាជ័យ។
+google.js:89: // 403 = ខ្វះសិទ្ធិសរសេរ (scope readonly ចាស់) → ត្រូវ /connect ម្ដងទៀត
+google.js:100: singleEvents: 'true', // ពន្លាត recurring events
+handlers.js:2: // Router សម្រាប់ Telegram update — រៀបចំ command ទាំងអស់របស់ bot។
+handlers.js:3: // រាល់ការទាក់ទង Google Calendar ត្រូវការ user ភ្ជាប់រួច (per-user OAuth)។
+handlers.js:32: // ---- ប៊ូតុង (reply keyboard) ----
+handlers.js:34: NEW: '➕ ព្រឹត្តិការណ៍ថ្មី',
+handlers.js:35: TODAY: '📅 ថ្ងៃនេះ',
+handlers.js:36: WEEK: '🗓 ៧ ថ្ងៃ',
+handlers.js:37: NEXT: '⏭ បន្ទាប់',
+handlers.js:38: CONNECT: '🔗 ភ្ជាប់ Google',
+handlers.js:39: STATUS: '📊 ស្ថានភាព',
+handlers.js:40: HELP: '❓ ជំនួយ',
+handlers.js:41: DISCONNECT: '🔌 ផ្ដាច់',
+handlers.js:53: // ពាក្យធម្មតា (គ្មាន /) → command; case-insensitive
+handlers.js:69: [{ text: '📅 ប្រតិទិនខ្មែរ', web_app: { url: 'https://telegrambot-calendar.vercel.app/' } }],
+handlers.js:87: await maybeShowSponsor(update.message.chat.id, update.message.from.id); // sponsor (តាមប្រេកង់ Admin)
+handlers.js:92: // ព្យាយាមជូនដំណឹង user ដោយមិន leak detail
+handlers.js:95: await sendMessage(chatId, '⚠️ មានបញ្ហាបច្ចេកទេសបណ្ដោះអាសន្ន។ សូមព្យាយាមម្ដងទៀត។');
+handlers.js:100: // បង្ហាញ sponsor ស្វ័យប្រវត្តិ — ប្រេកង់ = sponsor_per_week (Admin កំណត់; default 2/សប្ដាហ៍),
+handlers.js:101: // spacing ≥20h ដើម្បីកុំរំខាន។ បិទដោយដាក់ sponsor_per_week = 0 ឬ sponsor ទទេ។
+handlers.js:124: const userId = message.from.id; // key user ដោយ telegram user id
+handlers.js:130: // mid-flow text input (ឈ្មោះ event ឬ ម៉ោងផ្ទាល់ខ្លួន)
+handlers.js:133: await clearDraft(userId); // draft ចាស់ > 30 នាទី → បោះចោល
+handlers.js:139: if (BUTTON_TO_CMD[text]) text = BUTTON_TO_CMD[text]; // ប៊ូតុង → command
+handlers.js:140: else if (TEXT_KEYWORDS[text.toLowerCase()]) text = TEXT_KEYWORDS[text.toLowerCase()]; // ពាក្យធម្មតា
+handlers.js:142: const command = rawCmd.split('@')[0].toLowerCase(); // ដក @botname ចេញ
+handlers.js:159: return sendMessage(chatId, 'បានបោះបង់ ✅');
+handlers.js:189: return sendMessage(chatId, `🆔 Telegram ID របស់អ្នក៖ <code>${userId}</code>`);
+handlers.js:193: return sendMessage(chatId, 'មិនស្គាល់ command នេះទេ។ វាយ /help ដើម្បីមើលបញ្ជី។');
+handlers.js:196: // អត្ថបទធម្មតា — បញ្ជូនទៅ AI
+handlers.js:197: // បង្ហាញសកម្មភាព "typing..." ឲ្យអ្នកប្រើប្រាស់ដឹងថា bot កំពុងគិត
+handlers.js:215: await answerCallbackQuery(cq.id, 'បានផ្ដាច់រួចរាល់');
+handlers.js:216: return sendMessage(chatId, '✅ បានផ្ដាច់ Google Calendar រួចរាល់។ Token ត្រូវបានលុបចេញ។');
+handlers.js:219: await answerCallbackQuery(cq.id, 'បានបោះបង់');
+handlers.js:220: return sendMessage(chatId, 'មិនបានផ្ដាច់ទេ ✅');
+handlers.js:225: await answerCallbackQuery(cq.id, 'រួចរាល់');
+handlers.js:226: return sendMessage(chatId, on ? '🔔 បានបើកការជូនដំណឹងប្រចាំថ្ងៃ' : '🔕 បានបិទការជូនដំណឹងប្រចាំថ្ងៃ');
+handlers.js:237: '🔒 ដើម្បីសុវត្ថិភាព សូមភ្ជាប់ Google Calendar ក្នុង <b>chat ឯកជន</b> ជាមួយ bot ផ្ទាល់ (DM)។'
+handlers.js:240: // state ចង flow ទៅ telegram user នេះ + expiry 10 នាទី
+handlers.js:245: '🔗 ចុចប៊ូតុងខាងក្រោម ដើម្បីភ្ជាប់ Google Calendar របស់អ្នក។\n\n' +
+handlers.js:246: '• យើងស្នើសុំសិទ្ធិ <b>អានតែប៉ុណ្ណោះ</b> (read-only)។\n' +
+handlers.js:247: '• Link នេះមានសុពលភាព ១០ នាទី។',
+handlers.js:248: urlButton('🟢 ភ្ជាប់ Google Calendar', url)
+handlers.js:259: '⚪ មិនទាន់ភ្ជាប់ Google Calendar ទេ។\nវាយ /connect ដើម្បីភ្ជាប់។'
+handlers.js:264: `🟢 បានភ្ជាប់រួចរាល់\n` +
+handlers.js:265: `• គណនី៖ <b>${esc(user.google_email || 'unknown')}</b>\n` +
+handlers.js:266: `• ល្វែងម៉ោង៖ <b>${esc(tz)}</b>\n` +
+handlers.js:267: `• រំលឹកមុន៖ <b>${rm}</b> នាទី`
+handlers.js:274: return sendMessage(chatId, 'អ្នកមិនទាន់បានភ្ជាប់ Google Calendar ទេ។');
+handlers.js:276: return sendMessage(chatId, 'តើអ្នកប្រាកដជាចង់ផ្ដាច់ Google Calendar មែនទេ?', inlineButtons([
+handlers.js:278: { text: '✅ បាទ/ចាស ផ្ដាច់', callback_data: 'disconnect_yes' },
+handlers.js:279: { text: '❌ ទេ', callback_data: 'disconnect_no' },
+handlers.js:287: return sendMessage(chatId, 'ប្រើ៖ <code>/remind &lt;នាទី&gt;</code> (1–1440)។ ឧ. <code>/remind 30</code>');
+handlers.js:290: return sendMessage(chatId, `✅ កំណត់រំលឹកមុនព្រឹត្តិការណ៍ <b>${minutes}</b> នាទី។`);
+handlers.js:297: 'ប្រើ៖ <code>/timezone &lt;Zone&gt;</code>\nឧ. <code>/timezone Asia/Phnom_Penh</code>'
+handlers.js:301: return sendMessage(chatId, `✅ កំណត់ល្វែងម៉ោង៖ <b>${esc(arg)}</b>`);
+handlers.js:309: `🔔 ការជូនដំណឹងប្រចាំថ្ងៃ (ថ្ងៃសីល / ថ្ងៃឈប់សម្រាក)៖ <b>${on ? 'បើក' : 'បិទ'}</b>`,
+handlers.js:310: inlineButtons([[{ text: on ? '🔕 បិទ' : '🔔 បើក', callback_data: on ? 'notify_off' : 'notify_on' }]])
+handlers.js:319: text += `\n\n👥 <b>${count}</b> នាក់កំពុងប្រើ`;
+handlers.js:323: /* settings table អាចមិនទាន់មាន — រំលង */
+handlers.js:328: // /admin — admin ប៉ុណ្ណោះ → ប៊ូតុងបើក Mini App
+handlers.js:331: return sendMessage(chatId, '🔒 ពាក្យបញ្ជានេះសម្រាប់ admin ប៉ុណ្ណោះ។');
+handlers.js:333: return sendMessage(chatId, '🛠 បើកផ្ទាំងគ្រប់គ្រង៖', webAppButton('📊 បើក Dashboard', config.adminAppUrl));
+handlers.js:354: '📅 <b>កិច្ចការថ្ងៃនេះ</b>\n' +
+handlers.js:356: `☀️ ត្រូវនឹង ${kh.solar}` +
+handlers.js:357: (sila ? `\n🛕 ថ្ងៃនេះជា <b>ថ្ងៃសីល ${sila}</b>` : '');
+handlers.js:362: title = '🗓 ៧ ថ្ងៃខាងមុខ';
+handlers.js:367: title = '⏭ ព្រឹត្តិការណ៍បន្ទាប់';
+handlers.js:370: // ---- fetch: Google (បើភ្ជាប់) ឬ Local (បើមិន) ----
+handlers.js:379: return sendMessage(chatId, '🔌 ការភ្ជាប់ផុតសុពលភាព។ សូម /connect ម្ដងទៀត។');
+handlers.js:390: const hint = refresh ? '' : '\n\n💡 វាយ /new ដើម្បីបន្ថែមព្រឹត្តិការណ៍ (មិនបាច់ភ្ជាប់ Google)';
+handlers.js:391: return sendMessage(chatId, `${title}\n\nគ្មានព្រឹត្តិការណ៍ទេ ✨${hint}`);
+handlers.js:397: return `• <b>${esc(ev.summary || '(គ្មានចំណងជើង)')}</b>\n   🕒 ${esc(when)}${loc}`;
+handlers.js:415: '👋 <b>Bot តាមដាន Google Calendar</b>\n\n' +
+handlers.js:416: 'ខ្ញុំជួយរំលឹក និងបង្ហាញកិច្ចការ/ព្រឹត្តិការណ៍ពី Google Calendar របស់អ្នក។\n\n' +
+handlers.js:417: '<b>ពាក្យបញ្ជា៖</b>\n' +
+handlers.js:418: '/connect — ភ្ជាប់ Google Calendar\n' +
+handlers.js:419: '/new — បង្កើតព្រឹត្តិការណ៍ថ្មី\n' +
+handlers.js:420: '/today — កិច្ចការថ្ងៃនេះ\n' +
+handlers.js:421: '/week — ៧ ថ្ងៃខាងមុខ\n' +
+handlers.js:422: '/next — ព្រឹត្តិការណ៍បន្ទាប់\n' +
+handlers.js:423: '/remind &lt;នាទី&gt; — កំណត់ពេលរំលឹក (ឧ. /remind 30)\n' +
+handlers.js:424: '/timezone &lt;Zone&gt; — កំណត់ល្វែងម៉ោង\n' +
+handlers.js:425: '/notify — បើក/បិទ ការជូនដំណឹងប្រចាំថ្ងៃ (សីល/ឈប់សម្រាក)\n' +
+handlers.js:426: '/status — ពិនិត្យស្ថានភាពភ្ជាប់\n' +
+handlers.js:427: '/disconnect — ផ្ដាច់ និងលុប token\n\n' +
+handlers.js:428: '🔒 Token ត្រូវ encrypt មុនរក្សាទុក។'
+khmercal.js:2: // ចន្ទគតិ​ខ្មែរ (Khmer lunar) — wrapper លើ vendored momentkh (zero-dep, MIT)។
+khmercal.js:4: // KH_LUNAR_OFFSET_DAYS៖ កែ​តម្រូវ​លេខ​ថ្ងៃ​ចន្ទគតិ បើ​ប្រតិទិន​ផ្លូវ​ការ​ខុស​ពី momentkh ថេរ។
+khmercal.js:5: //  - 0 (default) = momentkh ដើម
+khmercal.js:6: //  - 1 = ខែ​ចន្ទគតិ​ចាប់​មុន ១ ថ្ងៃ (ត្រូវ​នឹង App ខ្លះ; ឧ. 17 មិថុនា 2026 → ៤កើត)
+khmercal.js:7: // ការ​កែ​នេះ​ប៉ះ​តែ​ផ្នែក​ចន្ទគតិ (ថ្ងៃ/ខែ/ឆ្នាំ/ស័ក) — ថ្ងៃ​សប្តាហ៍ និង​សុរិយគតិ​នៅ​ត្រឹមត្រូវ​ដដែល។
+khmercal.js:18: // khmer fields បន្ទាប់​ពី​កែ​តម្រូវ offset (សម្រាប់​ផ្នែក​ចន្ទគតិ)
+khmercal.js:25: // ត្រឡប់ { lunar, solar, khmer } សម្រាប់ ymd ("YYYY-MM-DD")
+khmercal.js:28: const realK = momentkh.fromGregorian(y, m, d); // ថ្ងៃ​សប្តាហ៍ + សុរិយគតិ​ពិត
+khmercal.js:29: const lunK = OFFSET_DAYS ? lunarResult(y, m, d) : realK; // ផ្នែក​ចន្ទគតិ
+khmercal.js:31: const weekday = momentkh.format(realK, 'ថ្ងៃW');
+khmercal.js:32: const lunarBody = momentkh.format(lunK, 'dN ខែm ឆ្នាំa e ព.ស b');
+khmercal.js:35: solar: momentkh.format(realK, 'ថ្ងៃទីds ខែM ឆ្នាំc'),
+khmercal.js:36: dayLabel: momentkh.format(lunK, 'dN'), // ឧ. "៣កើត"
+khmercal.js:37: monthName: lunK.khmer.monthName, // ឧ. "បឋមាសាឍ"
+khmercal.js:38: weekdayName: realK.khmer.dayOfWeekName, // ឧ. "ពុធ"
+khmercal.js:43: // ត្រឡប់ label ថ្ងៃ​សីល (ឧ. "៨កើត") ឬ null
+khmercal.js:47: if (k.moonPhase === 0 && k.day === 8) return '៨កើត';
+khmercal.js:48: if (k.moonPhase === 0 && k.day === 15) return '១៥កើត';
+khmercal.js:49: if (k.moonPhase === 1 && k.day === 8) return '៨រោច';
+khmercal.js:50: // ថ្ងៃ​រោច​ចុង​ក្រោយ (១៤ ឬ ១៥រោច) = ថ្ងៃ​បន្ទាប់​ជា ១កើត
+khmercal.js:54: if (tk.day === 1 && tk.moonPhase === 0) return k.day === 15 ? '១៥រោច' : '១៤រោច';
+sanitize.js:2: // សុវត្ថិភាព៖ បដិសេធ link/URL ក្នុង text ដែល user បញ្ចូល (note, event title)។
+sanitize.js:3: // ការពារ spam/phishing/មេរោគ — អ្នកប្រើមិនអាចបញ្ចូល link ចូលក្នុងព្រឹត្តិការណ៍/note ឡើយ។
+sanitize.js:4: // (ការ​បង្ហាញ​ត្រូវ esc() រួច​ដែរ ដើម្បី​ការពារ XSS)។
+sanitize.js:6: // URL schemes, www, t.me, @username links, ឬ domain ទូទៅ
+sanitize.js:14: // ត្រឡប់ null បើ valid; ត្រឡប់ error message (string) បើមិន valid
+sanitize.js:17: if (t.length < 1) return 'អត្ថបទទទេ';
+sanitize.js:18: if (t.length > max) return `វែងពេក (អតិបរមា ${max} តួ)`;
+sanitize.js:19: if (containsUrl(t)) return '🔒 មិនអនុញ្ញាតឲ្យដាក់ link/URL ទេ (ដើម្បីសុវត្ថិភាព)';
+state.js:2: // បង្កើត / ផ្ទៀងផ្ទាត់ OAuth `state` បែប stateless ដោយប្រើ HMAC-SHA256។
+state.js:3: // គោលបំណង៖ ចង OAuth flow ទៅនឹង Telegram user ត្រឹមត្រូវ និងការពារ CSRF។
+state.js:4: // State មាន expiry ខ្លី (10 នាទី) ដូច្នេះ link ភ្ជាប់ផុតសុពលភាពលឿន។
+state.js:9: const TTL_MS = 10 * 60 * 1000; // 10 នាទី
+state.js:21: // payload ឧ. { tid: <telegram_id> }
+state.js:26: n: crypto.randomBytes(8).toString('hex'), // nonce — ការពារ replay/guess
+state.js:32: // ត្រឡប់ payload បើ valid; បើមិន valid ត្រឡប់ null
+state.js:39: // ប្រៀបធៀបបែប constant-time ការពារ timing attack
+telegram.js:2: // Helper តូចៗ ដើម្បីហៅ Telegram Bot API ដោយផ្ទាល់តាម fetch (គ្មាន dependency បន្ថែម)។
+telegram.js:3: // ការមិនប្រើ library ខាងក្រៅ → កាត់បន្ថយ supply-chain risk។
+telegram.js:17: // កុំ log token ឬ payload ពេញ — log តែ method + description
+telegram.js:23: // Escape សម្រាប់ HTML parse_mode (title/location មកពី user input)
+telegram.js:49: // កែ inline keyboard នៃ message ដែលមានស្រាប់ (ឧ. ប្ដូរខែ​ក្នុង​ប្រតិទិន)
+telegram.js:58: // inline keyboard ដែលមានប៊ូតុង URL (ឧ. ភ្ជាប់ Google)
+telegram.js:67: // ប៊ូតុងបើក Telegram Mini App
+telegram.js:72: // កែ "About" ខ្លី​របស់ bot (បង្ហាញ​ចំនួន User + sponsor) — max 120 តួ
+telegram.js:77: // ផ្ញើរូបភាព (ឧ. sponsor banner) — photo ជា URL ឬ file_id; caption max 1024 តួ
+webapp.js:2: // ផ្ទៀងផ្ទាត់ Telegram Mini App initData ដោយ HMAC-SHA256 (តាម spec ផ្លូវការ Telegram)។
+webapp.js:3: // ការពារ៖ មានតែ request ដែលមកពី Telegram WebApp ពិត (ចុះហត្ថលេខាដោយ bot token) ទើបទទួល។
+webapp.js:4: // រួចឆែកថា user.id === ADMIN_TELEGRAM_ID សម្រាប់សិទ្ធិ admin។
+webapp.js:9: // ត្រឡប់ user object បើ valid; បើមិន valid ត្រឡប់ null
+webapp.js:18: // data_check_string = key=value បានតម្រៀបតាម alphabet, ភ្ជាប់ដោយ \n
+webapp.js:33: // freshness — បដិសេធបើ auth_date ចាស់ពេក (replay protection)
+delete-webhook.js:2: // លុប webhook (ឧ. ពេលចង់ debug ដោយ polling នៅ local)។
+delete-webhook.js:7: console.error('❌ ខ្វះ TELEGRAM_BOT_TOKEN');
+gen-secrets.js:2: // បង្កើត secret ចៃដន្យ (random) សម្រាប់ដាក់ក្នុង Vercel env vars។
+gen-secrets.js:3: // រត់៖  node scripts/gen-secrets.js
+gen-secrets.js:10: console.log('# ចម្លងតម្លៃទាំងនេះទៅ Vercel Environment Variables');
+gen-secrets.js:11: console.log('# (កុំ commit ឡើង GitHub)\n');
+gen-secrets.js:12: console.log(`ENCRYPTION_KEY=${b64(32)}`);        // 32 bytes សម្រាប់ AES-256
+gen-secrets.js:14: console.log(`CRON_SECRET=${hex(32)}`);           // ការពារ cron endpoint
+set-commands.js:2: // កំណត់បញ្ជី command ដែលបង្ហាញក្នុងប៊ូតុង "☰ Menu" និង autocomplete "/"។
+set-commands.js:7: console.error('❌ ខ្វះ TELEGRAM_BOT_TOKEN');
+set-commands.js:12: { command: 'new', description: 'បង្កើតព្រឹត្តិការណ៍ថ្មី' },
+set-commands.js:13: { command: 'today', description: 'កិច្ចការថ្ងៃនេះ' },
+set-commands.js:14: { command: 'week', description: '៧ ថ្ងៃខាងមុខ' },
+set-commands.js:15: { command: 'next', description: 'ព្រឹត្តិការណ៍បន្ទាប់' },
+set-commands.js:16: { command: 'connect', description: 'ភ្ជាប់ Google Calendar' },
+set-commands.js:17: { command: 'status', description: 'ស្ថានភាពភ្ជាប់' },
+set-commands.js:18: { command: 'remind', description: 'កំណត់ពេលរំលឹក (នាទី)' },
+set-commands.js:19: { command: 'timezone', description: 'កំណត់ល្វែងម៉ោង' },
+set-commands.js:20: { command: 'notify', description: 'បើក/បិទ ការជូនដំណឹងប្រចាំថ្ងៃ' },
+set-commands.js:21: { command: 'disconnect', description: 'ផ្ដាច់ Google Calendar' },
+set-commands.js:22: { command: 'help', description: 'ជំនួយ' },
+set-webhook.js:2: // ចុះឈ្មោះ Telegram webhook ទៅ Vercel function ព្រមជាមួយ secret_token។
+set-webhook.js:4: // រត់ (Node 20+ អាចអាន .env ផ្ទាល់)៖
+set-webhook.js:7: // ត្រូវការ env៖ TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET
+set-webhook.js:14: console.error('❌ ខ្វះ TELEGRAM_BOT_TOKEN ឬ TELEGRAM_WEBHOOK_SECRET');
+set-webhook.js:18: console.error('❌ សូមផ្ដល់ base URL: node --env-file=.env scripts/set-webhook.js https://your-app.vercel.app');

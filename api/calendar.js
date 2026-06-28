@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       date: ymd,
       g: d,
       lunar: kh.dayLabel, // ខ្លី "៨កើត" សម្រាប់ cell
-      full: kh.lunar, // ពេញ "ថ្ងៃច័ន្ទ ៨កើត ខែ..." សម្រាប់ detail + copy
+      full: kh.lunar, // ពេញ "ថ្ងៃចន្ទ ៨កើត ខែ..." សម្រាប់ detail + copy
       month: kh.monthName,
       sila: silaLabel(ymd),
       holiday: holMap[ymd] || null,

@@ -136,7 +136,7 @@ export default async function handler(req, res) {
         if (await wasDailySent(user.telegram_id, todayYmd)) continue;
 
         const kh = khmerLunar(todayYmd);
-        let msg = `🌅 <b>អរុណសួស្តី!</b>\n🌙 ${kh.lunar}\n☀️ ${kh.solar}`;
+        let msg = `🌅 <b>អរុណសួស្ដី!</b>\n🌙 ${kh.lunar}\n☀️ ${kh.solar}`;
         if (sila) msg += `\n\n🛕 ថ្ងៃនេះជា <b>ថ្ងៃសីល ${sila}</b> — សូមរក្សាសីល 🙏`;
         if (holToday) msg += `\n\n🎉 ថ្ងៃនេះ <b>ឈប់សម្រាក</b>៖ ${esc(holToday)}`;
 
